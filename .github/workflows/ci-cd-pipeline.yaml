@@ -11,7 +11,6 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     env:
-        DIOGO: COOL
         IMAGE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
     steps:
         - name: Checkout Code
@@ -59,4 +58,21 @@ jobs:
             aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name ${{ secrets.AWS_CLUSTER }}
             kubectl apply -f deployment.yaml
           
+        - name: Get Service External IP
+          id: get_external_ip
+          run: |
+            echo "Waiting for external IP assignment..."
+            for i in {1..10}; do
+               EXTERNAL_IP=$(kubectl get svc simple-node-app -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+            if [ -z "$EXTERNAL_IP" ]; then
+              echo "External IP not yet assigned. Sleeping..."
+              sleep 10
+            else
+              echo "External IP found: $EXTERNAL_IP"
+              # Set the external IP as an output so other steps can use it
+              echo "external_ip=$EXTERNAL_IP" >> $GITHUB_OUTPUT
+              break
+            fi
+          done
+
         
