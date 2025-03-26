@@ -1,16 +1,13 @@
 name: CI / CD Pipeline
 run-name: ${{ github.actor }} is Deploying 🚀
 on:
-    push: 
-        branches:
-            - main 
+    # push: 
+    #     tags:
+    #         - '*'
     workflow_dispatch:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    env:
-        SWAP: COOL
-        IMAGE_TAG: ${{ github.ref_type == 'tag' && github.ref_name || github.sha }}
     steps:
         - name: Checkout Code
           uses: actions/checkout@v4
@@ -26,7 +23,7 @@ jobs:
           with:
             push: true
             tags: |
-             ${{ secrets.DOCKER_USERNAME }}/simple-node-app:${{ env.IMAGE_TAG }}
+             ${{ secrets.DOCKER_USERNAME }}/simple-node-app:${{ github.ref_name }}
              ${{ secrets.DOCKER_USERNAME }}/simple-node-app:latest
 
         - name: Configure AWS Credentials
@@ -40,7 +37,7 @@ jobs:
           run: |
             sudo apt-get update
             sudo apt-get install -y gettext-base
-            export IMAGE_NAME="docker.io/${{ secrets.DOCKER_USERNAME }}/simple-node-app:latest"
+            export IMAGE_NAME="docker.io/${{ secrets.DOCKER_USERNAME }}/simple-node-app:${{ github.ref_name }}"
             envsubst < deployment.template.yaml > deployment.yaml
             echo "Final deployment:"
             cat deployment.yaml
@@ -56,3 +53,5 @@ jobs:
             mkdir -p $HOME/bin && cp ./kubectl $HOME/bin/kubectl && export PATH=$HOME/bin:$PATH
             aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name ${{ secrets.AWS_CLUSTER }}
             kubectl apply -f deployment.yaml
+          
+        
